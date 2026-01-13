@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"net/http"
-
 	"github.com/mr_rambling/chirpy/internal/auth"
 	"github.com/mr_rambling/chirpy/internal/database"
+	"net/http"
+	"time"
 )
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
@@ -41,8 +41,9 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds *int   `json:"expires_in_seconds"`
 	}
 
 	var params parameters
@@ -51,6 +52,11 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong decoding the JSON body", err)
 		return
+	}
+
+	if params.ExpiresInSeconds == nil || *params.ExpiresInSeconds >= 3600 {
+		defaultExpiry := 3600 // 1 hour
+		params.ExpiresInSeconds = &defaultExpiry
 	}
 
 	dbUser, err := cfg.db.GetUser(r.Context(), params.Email)
@@ -65,11 +71,18 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := auth.MakeJWT(dbUser.ID, cfg.secretKey, time.Duration(*params.ExpiresInSeconds)*time.Second)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong creating the JWT token", err)
+		return
+	}
+
 	u := User{
 		ID:        dbUser.ID,
 		CreatedAt: dbUser.CreatedAt,
 		UpdatedAt: dbUser.UpdatedAt,
 		Email:     dbUser.Email,
+		Token:     token,
 	}
 	respondWithJSON(w, http.StatusOK, u)
 }
