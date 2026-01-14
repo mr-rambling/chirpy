@@ -2,11 +2,21 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/mr_rambling/chirpy/internal/auth"
 	"github.com/mr_rambling/chirpy/internal/database"
 	"net/http"
 	"time"
 )
+
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	AccToken  string    `json:"token,omitempty"`
+	RefToken  string    `json:"refresh_token"`
+}
 
 func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
@@ -41,9 +51,8 @@ func (cfg *apiConfig) handlerUsersCreate(w http.ResponseWriter, r *http.Request)
 
 func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds *int   `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	var params parameters
@@ -52,11 +61,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong decoding the JSON body", err)
 		return
-	}
-
-	if params.ExpiresInSeconds == nil || *params.ExpiresInSeconds >= 3600 {
-		defaultExpiry := 3600 // 1 hour
-		params.ExpiresInSeconds = &defaultExpiry
 	}
 
 	dbUser, err := cfg.db.GetUser(r.Context(), params.Email)
@@ -71,18 +75,32 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.MakeJWT(dbUser.ID, cfg.secretKey, time.Duration(*params.ExpiresInSeconds)*time.Second)
+	token, err := auth.MakeJWT(dbUser.ID, cfg.secretKey, time.Duration(3600)*time.Second)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong creating the JWT token", err)
 		return
 	}
+
+	refToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong creating the refresh token", err)
+		return
+	}
+
+	expiry := time.Now().Add(60 * 24 * time.Hour)
+	_, err = cfg.db.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refToken,
+		UserID:    dbUser.ID,
+		ExpiresAt: expiry,
+	})
 
 	u := User{
 		ID:        dbUser.ID,
 		CreatedAt: dbUser.CreatedAt,
 		UpdatedAt: dbUser.UpdatedAt,
 		Email:     dbUser.Email,
-		Token:     token,
+		AccToken:  token,
+		RefToken:  refToken,
 	}
 	respondWithJSON(w, http.StatusOK, u)
 }

@@ -10,17 +10,7 @@ content-type: application/json
   "password": "123456"
 }
 
-###
-
-POST http://localhost:8080/api/users HTTP/1.1
-content-type: application/json
-
-{
-  "email": "mike@bettercall.com",
-  "password": "98765"
-}
-
-###
+### Login
 
 POST http://localhost:8080/api/login HTTP/1.1
 content-type: application/json
@@ -32,19 +22,9 @@ content-type: application/json
 
 ###
 
-POST http://localhost:8080/api/login HTTP/1.1
-content-type: application/json
-
-{
-  "email": "mike@bettercall.com",
-  "password": "98765"
-}
-
-###
-
 POST http://localhost:8080/api/chirps HTTP/1.1
 content-type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiIxNWNhNjQ1ZS00Zjk0LTQwMjQtYTUzOS04YWY5NWZlZDlkZjEiLCJleHAiOjE3NjgyODYzMzUsImlhdCI6MTc2ODI4MjczNX0.hJtWzklOQSXsS0wbubHe0Z2d5b6cnKqlIXY-NN-PJng
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiJjNDA4YWYxNC02N2NlLTQ2ZGQtYWM3MS0xYTIwN2NjNjcyZTciLCJleHAiOjE3Njg0MzQwMTQsImlhdCI6MTc2ODQzMDQxNH0.lm_ACmRZzQG-a21n8UY2_JRZUp0uBXIAezvh1BbHUZk
 
 {
   "body": "Clearly his taste in women is the same as his taste in lawyers: only the very best... with just a right amount of dirty!"
@@ -52,12 +32,18 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiL
 
 ###
 
-POST http://localhost:8080/api/chirps HTTP/1.1
+POST http://localhost:8080/api/refresh HTTP/1.1
 content-type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiJjMWRlMWE5OC03ZjY2LTQzY2MtYTFiNi0xM2Y5ZjA1MzY2ZjAiLCJleHAiOjE3NjgyODYzNTUsImlhdCI6MTc2ODI4Mjc1NX0.XuuqEN8a2t7tBgcZRaIy7UJMYJJWpgA7_8cfxXaEZUs
-
-{
-  "body": "No more half-measures."
-}
+Authorization: Bearer 2234c9c6ca5da5ece44a0ffeee961bb4dccde806a44d3a6e6e50f5a8b94b6dd7
 
 ###
+
+POST http://localhost:8080/api/revoke HTTP/1.1
+content-type: application/json
+Authorization: Bearer 2234c9c6ca5da5ece44a0ffeee961bb4dccde806a44d3a6e6e50f5a8b94b6dd7
+
+###
+
+POST http://localhost:8080/api/refresh HTTP/1.1
+content-type: application/json
+Authorization: Bearer 2234c9c6ca5da5ece44a0ffeee961bb4dccde806a44d3a6e6e50f5a8b94b6dd7
