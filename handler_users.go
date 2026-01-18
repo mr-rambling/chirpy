@@ -104,3 +104,52 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	respondWithJSON(w, http.StatusOK, u)
 }
+
+func (cfg *apiConfig) handlerUserUpdate(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Authorization token missing", err)
+		return
+	}
+
+	id, err := auth.ValidateJWT(token, cfg.secretKey)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid authorization token", err)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong decoding the JSON body", err)
+		return
+	}
+
+	hashedPw, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong hashing the password", err)
+	}
+	dbUser, err := cfg.db.UpdateUser(r.Context(), database.UpdateUserParams{
+		ID:           id,
+		Email:        params.Email,
+		PasswordHash: hashedPw,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Something went wrong updating the user", err)
+		return
+	}
+
+	u := User{
+		ID:        id,
+		CreatedAt: dbUser.CreatedAt,
+		UpdatedAt: dbUser.UpdatedAt,
+		Email:     dbUser.Email,
+	}
+	respondWithJSON(w, http.StatusOK, u)
+}
