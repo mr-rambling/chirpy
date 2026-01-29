@@ -18,6 +18,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	pfmUser        string
 	secretKey      string
+	polkaKey       string
 }
 
 type Chirp struct {
@@ -33,6 +34,7 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
 	secretKey := os.Getenv("SECRET_KEY")
+	polkaKey := os.Getenv("POLKA_KEY")
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -44,6 +46,7 @@ func main() {
 	apiCfg.db = dbQueries
 	apiCfg.pfmUser = platform
 	apiCfg.secretKey = secretKey
+	apiCfg.polkaKey = polkaKey
 
 	const filepathRoot = "."
 	const port = "8080"
@@ -53,7 +56,7 @@ func main() {
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(handler))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
-	mux.HandleFunc("GET /api/chirps", apiCfg.handlerRetrieveChirps)
+	mux.HandleFunc("GET /api/chirps/", apiCfg.handlerRetrieveChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerRetrieveChirp)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("POST /api/chirps", apiCfg.handlerChirps)
@@ -61,7 +64,9 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerTokenRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerTokenRevoke)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerWebhooks)
 	mux.HandleFunc("PUT /api/users", apiCfg.handlerUserUpdate)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerChirpDelete)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

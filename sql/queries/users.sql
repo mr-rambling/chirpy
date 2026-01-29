@@ -22,3 +22,12 @@ SET updated_at = NOW(), email = $2, password_hash = $3
 WHERE id = $1
 RETURNING *;
 
+-- name: UpgradeChirpyRed :exec
+UPDATE users
+SET is_chirpy_red = TRUE
+WHERE id = $1;
+
+-- name: DowngradeChirpyRed :exec
+UPDATE users
+SET is_chirpy_red = FALSE
+WHERE id = $1;
