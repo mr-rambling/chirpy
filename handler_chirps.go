@@ -79,27 +79,23 @@ func censorChirp(chirp string) string {
 }
 
 func (cfg *apiConfig) handlerRetrieveChirps(w http.ResponseWriter, r *http.Request) {
+	authorID := uuid.Nil
 	authStr := r.URL.Query().Get("author_id")
-	auth, err := uuid.Parse(authStr)
+	authorID, err := uuid.Parse(authStr)
 	if err != nil && authStr != "" {
 		respondWithError(w, http.StatusBadRequest, "Invalid author ID", err)
 		return
 	}
 
 	sortQ := r.URL.Query().Get("sort")
-	switch sortQ {
-	case "":
+	if sortQ == "" {
 		sortQ = "asc"
-	case "asc":
-		// do nothing
-	case "desc":
-		// do nothing
-	default:
-		respondWithError(w, http.StatusBadRequest, "Invalid sort query", err)
+	} else if sortQ != "asc" && sortQ != "desc" {
+		respondWithError(w, http.StatusBadRequest, "Invalid sort query", nil)
 		return
 	}
 
-	dbChirps, err := cfg.db.GetChirps(r.Context(), auth)
+	dbChirps, err := cfg.db.GetChirps(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Something went wrong retrieving the chirps", err)
 		return
@@ -107,6 +103,9 @@ func (cfg *apiConfig) handlerRetrieveChirps(w http.ResponseWriter, r *http.Reque
 
 	var chirps []Chirp
 	for _, chirp := range dbChirps {
+		if authorID != uuid.Nil && chirp.UserID != authorID {
+			continue
+		}
 		chirps = append(chirps, Chirp{
 			ID:        chirp.ID,
 			CreatedAt: chirp.CreatedAt,
@@ -116,11 +115,14 @@ func (cfg *apiConfig) handlerRetrieveChirps(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	switch sortQ {
-	case "asc":
-		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.Before(chirps[j].CreatedAt) })
-	case "desc", "":
-		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt) })
+	if sortQ == "asc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+		})
+	} else {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+		})
 	}
 
 	respondWithJSON(w, http.StatusOK, chirps)
